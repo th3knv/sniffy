@@ -1,0 +1,5 @@
+socket
+requests
+threading
+scapy
+time
