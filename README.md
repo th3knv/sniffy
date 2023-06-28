@@ -2,13 +2,8 @@
 This is a Network packet sniffer. Basically it captures your network activity. 
 
 ### You may need root privilages to run script
-
-Analyzing (coming soon)
-## You can review these packets with the review **(r)** option
+#
+## You can review these packets by typing the number of the package
 
 ## Installation
-```
-pip install tk
-pip install requests
-pip install scapy
-```
+Run `setup.py` to install pips
