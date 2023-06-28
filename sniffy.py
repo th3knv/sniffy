@@ -1,7 +1,6 @@
 from socketserver import UDPServer
-import tkinter as tk
 import requests
-from telnetlib import IP
+from scapy.layers.inet import IP
 import threading
 from scapy.all import *
 import time
@@ -10,126 +9,95 @@ import sys
 
 packet_list = []
 
+#get local ip
+
+def get_local_ip():
+    try:
+        temp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        temp_socket.connect(('8.8.8.8', 80))  
+        local_ip = temp_socket.getsockname()[0]  
+        temp_socket.close()  
+        return local_ip
+    except socket.error:
+        return None
+local_ip = get_local_ip()
+
 try:
     def input_thread(packet_list):
-        # Get user input and store it in a global variable
         global review_packet
         while True:
-            print("\033[33m||Press 'r' to review IP Addr|| \033[0m\n")
-            review_packet = input("\033[33m||Enter package number to review package|| \033[0m\n")
+            review_packet = input("\033[33m||Enter packet number to review IP & packet|| \033[0m\n")
             try:
                 packet_index = int(review_packet) - 1
                 if packet_index >= 0 and packet_index < len(packet_list):
-                    print(packet_list[packet_index].show())
+                    packet = packet_list[packet_index]
+
+                    url = 'https://ipinfo.io/' + packet[IP].dst
+                    response = requests.get(url)
+                    data = response.json()
+
+                    status = data.get('status', '\033[31mNot Found\033[0m')
+                    ip = data.get('ip', '\033[31mNot Found\033[0m')
+                    hostname = data.get('hostname', '\033[31mNot Found\033[0m')
+                    city = data.get('city', '\033[31mNot Found\033[0m')
+                    region = data.get('region', '\033[31mNot Found\033[0m')
+                    country = data.get('country', '\033[31mNot Found\033[0m')
+                    organization = data.get('org', '\033[31mNot Found\033[0m')
+                    postal_code = data.get('postal', '\033[31mNot Found\033[0m')
+                    timezone = data.get('timezone', '\033[31mNot Found\033[0m')
+                    as_ = data.get('as', '\033[31mNot Found\033[0m')
+                    anycast = data.get('anycast', '\033[31mNot Found\033[0m')
+                    abuse_email = data.get('email', '\033[31mNot Found\033[0m')
+                    abuse_phone = data.get('phone', '\033[31mNot Found\033[0m')
+                    #print results
+                    response_report = f'\033[32mResponse Report:\033[0m {response.status_code}'
+                    results = f'\033[32mStatus:\033[0m {status}\n'
+                    results += f'\033[32mIP:\033[0m {ip}\n'
+                    results += f'\033[32mHostname:\033[0m {hostname}\n'
+                    results += f'\033[32mCity:\033[0m {city}\n'
+                    results += f'\033[32mRegion:\033[0m {region}\n'
+                    results += f'\033[32mCountry:\033[0m {country}\n'
+                    results += f'\033[32mCompany:\033[0m {organization}\n'
+                    results += f'\033[32mPostal:\033[0m {postal_code}\n'
+                    results += f'\033[32mTimeZone:\033[0m {timezone}\n'
+                    results += f'\033[32mAS:\033[0m {as_}\n'
+                    results += f'\033[32mAnyCast:\033[0m {anycast}\n'
+                    results += f'\033[32mAbuse email:\033[0m {abuse_email}\n'
+                    results += f'\033[32mAbuse phone:\033[0m {abuse_phone}\n'
+                       
+                    print('')
+                    print(response_report)
+                    print(results)
+                    print(packet.show())
                 else:
                     print(f"No packet found: {packet_index + 1}")
             except ValueError:
                 print(f"Invalid input: {review_packet}")
 
-            if review_packet == 'r':
-                # Function to perform the IP address scan and display the results
-                def scan_ip():
-        # Get the IP address from the entry widget
-                    ip_add = ip_entry.get()
-                    url = 'https://ipinfo.io/' + ip_add
-                    response = requests.get(url)
-                    data = response.json()
-        
-        # Extract the information about the IP address
-                    status = data.get('status', 'Not Found')
-                    ip = data.get('ip', 'Not Found')
-                    hostname = data.get('hostname', 'Not Found')
-                    city = data.get('city', 'Not Found')
-                    region = data.get('region', 'Not Found')
-                    country = data.get('country', 'Not Found')
-                    #latitude, longitude = data.get('loc', 'Not Found').split(',')
-                    organization = data.get('org', 'Not Found')
-                    postal_code = data.get('postal', 'Not Found')
-                    timezone = data.get('timezone', 'Not Found')
-                    as_ = data.get('as', 'Not Found')
-                    anycast = data.get('anycast', 'Not Found')
-                    abuse_email = data.get('email', 'Not Found')
-                    abuse_phone = data.get('phone', 'Not Found')
-
-        # Format the results as a string
-                    response = f'Response Report: {response.status_code}'
-                    results = f'Status: {status}\n'
-                    results += f'IP: {ip}\n'
-                    results += f'Hostname: {hostname}\n'
-                    results += f'City: {city}\n'
-                    results += f'Region: {region}\n'
-                    results += f'Country: {country}\n'
-                    results += f'Company: {organization}\n'
-                    #results += f'Coordinates: {latitude}, {longitude}\n'
-                    results += f'Postal: {postal_code}\n'
-                    results += f'TimeZone: {timezone}\n'
-                    results += f'AS: {as_}\n'
-                    results += f'AnyCast: {anycast}\n'
-                    results += f'Abuse email: {abuse_email}\n'
-                    results += f'Abuse phone: {abuse_phone}\n'
-
-        # Update the results text widget with the response and results
-                    results_text.delete("1.0", "end")  # Clear the text widget
-                    results_text.insert("1.0", response+'\n'+results)  # Insert the new text
-
-    # Create the main window
-                root = tk.Tk()
-                root.geometry('350x480+300+50')
-                root.title("IP Scanner")
-
-    # Create a label and text entry widget for the IP address
-                ip_label = tk.Label(root, text="IP Address Review", font=('Arial', 16))
-                hint_label = tk.Label(root, text='Invalid Address = No results / Error', font=('Arial', 9), fg='red')
-                hint2_label = tk.Label(root, text='Debug method: Adjust window for better info view', font=('Arial', 8), fg='green')
-                ip_label.pack()
-                hint_label.pack()
-                hint2_label.pack()
-                ip_entry = tk.Entry(root, font = ('Arial', 16))
-                ip_entry.pack()
-
-    # Create a button to start the IP scan
-                scan_button = tk.Button(root, text="Scan", font = ('', 10), command=scan_ip)
-                scan_button.pack()
-
-    # Create a scrollbar and a text widget to display the results
-                scrollbar = tk.Scrollbar(root)
-                scrollbar.pack(side="right", fill="y")
-                results_text = tk.Text(root, font=('Arial', 14), yscrollcommand=scrollbar.set)
-                results_text.pack()
-                scrollbar.config(command=results_text.yview)
-
-    # Run the main loop
-                root.mainloop()
-
     input_thread = threading.Thread(target=input_thread, args=(packet_list,))
     input_thread.start()
 
-
     def packet_callback(packet):
-        # Check if the packet contains an IP layer
         if IP in packet:
+            if packet[IP].src == local_ip and packet[IP].dst == "192.168.1.1":
+                return  # Filter package, it prints it a lot
+            if packet[IP].src == "192.168.1.1" and packet[IP].dst == local_ip:
+                return  # Filter package, it prints it a lot
+
             try:
                 sourcedomain_name = socket.gethostbyaddr(packet[IP].src)[0]
                 destdomain_name = socket.gethostbyaddr(packet[IP].dst)[0]
             except socket.herror:
-                sourcedomain_name ='Unknown'
+                sourcedomain_name = 'Unknown'
                 destdomain_name = 'Unknown'
 
-
-
-
-
-
-            # Print the packet's source and destination IP addresses, domain names, and protocol
             count = len(packet_list) + 1
             packet_list.append(packet)
+            time.sleep(0.5)
             print(f"\033[34mSource:\033[0m {packet[IP].src}: (\033[33m{sourcedomain_name}\033[0m) \033[34mDestination:\033[0m {packet[IP].dst}: (\033[33m{destdomain_name}\033[0m)  {count}")
-            # Print the hex dump of the packet
-            #print(packet.show())
         else:
             pass
 
-    # Start sniffing traffic on the wlan0 interface, with promiscuous mode enabled
     sniff(iface="wlan0", prn=packet_callback, promisc=True)
 
 except KeyboardInterrupt:
